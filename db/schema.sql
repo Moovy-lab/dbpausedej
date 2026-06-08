@@ -1,49 +1,82 @@
-CREATE TABLE user (
-    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    role ENUM('admin', 'user','client') NOT NULL DEFAULT 'user',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+CREATE DATABASE IF NOT EXISTS pause_manager CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE pause_manager;
+
+
+CREATE TABLE clients (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(255)        NOT NULL,
+    contact     VARCHAR(255)        NOT NULL,
+    email       VARCHAR(255)        NOT NULL,
+    contract    VARCHAR(255)        NOT NULL,
+    created_at  DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-CREATE TABLE service (
-    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
-    category ENUM('pause_cafe', 'dejeuner', 'location_salle'),
-    description TEXT,
-    price DECIMAL(10, 2) NOT NULL,
-    unit VARCHAR(50),
-    badge VARCHAR(50),
-    status ENUM('active', 'inactive') DEFAULT 'active'
+CREATE TABLE users (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    first_name  VARCHAR(100)        NOT NULL,
+    last_name   VARCHAR(100)        NOT NULL,
+    email       VARCHAR(255)        NOT NULL UNIQUE,
+    password    VARCHAR(255)        NOT NULL,
+    role        ENUM('admin','user','client') NOT NULL DEFAULT 'user',
+    client_id   INT UNSIGNED        NULL,
+    created_at  DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_users_client
+        FOREIGN KEY (client_id) REFERENCES clients(id)
+        ON DELETE SET NULL ON UPDATE CASCADE
 );
 
-CREATE TABLE client (
-    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    contact VARCHAR(100) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    contract_number VARCHAR(50) NOT NULL UNIQUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+CREATE TABLE contract_details (
+    id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    client_id    INT UNSIGNED        NOT NULL,
+    service_type ENUM('pauseCafe','pauseDejeuner','locationSalle','pauseCafeRenforce','cocktail') NOT NULL,
+    quantity     INT UNSIGNED        NOT NULL DEFAULT 0,
+    unit_price   DECIMAL(10,2)       NOT NULL DEFAULT 0.00,
+    created_at   DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at   DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_contract_client
+        FOREIGN KEY (client_id) REFERENCES clients(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+
+    CONSTRAINT uq_contract_client_service
+        UNIQUE (client_id, service_type)
 );
 
-CREATE TABLE contractDetails (
-    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    client_id INT NOT NULL,
-    service_key ENUM('pauseCafe', 'pauseDejeuner', 'locationSalle', 'pauseCafeRenforce', 'cocktail') NOT NULL,
-    quantity INT DEFAULT 0 CHECK (quantity >= 0),
-    unit_price DECIMAL(10, 2) DEFAULT 0.00 CHECK (unit_price >= 0),
-    FOREIGN KEY (client_id) REFERENCES client(id)
+CREATE TABLE services (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(255)        NOT NULL,
+    category    ENUM('pauseCafe','pauseDejeuner','locationSalle','pauseCafeRenforce','cocktail') NOT NULL,
+    price       DECIMAL(10,2)       NOT NULL,
+    unit        VARCHAR(100)        NOT NULL,
+    description TEXT                NULL,
+    badge       VARCHAR(100)        NULL,
+    status      ENUM('active','inactive') NOT NULL DEFAULT 'active',
+    created_at  DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
 
 CREATE TABLE orders (
-    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    client_id INT NOT NULL,
-    date DATE NOT NULL,
-    nature ENUM('pauseCafe', 'pauseDejeuner', 'locationSalle', 'pauseCafeRenforce', 'cocktail') NOT NULL,
-    quantity INT DEFAULT 1 CHECK (quantity >= 1),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (client_id) REFERENCES client(id)
+    id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    client_id    INT UNSIGNED        NOT NULL,
+    service_type ENUM('pauseCafe','pauseDejeuner','locationSalle','pauseCafeRenforce','cocktail') NOT NULL,
+    quantity     INT UNSIGNED        NOT NULL,
+    unit_price   DECIMAL(10,2)       NOT NULL,   
+    date         DATE                NOT NULL,
+    created_at   DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at   DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_orders_client
+        FOREIGN KEY (client_id) REFERENCES clients(id)
+        ON DELETE CASCADE ON UPDATE CASCADE
 );
+
+CREATE INDEX idx_orders_client_type ON orders (client_id, service_type);
+CREATE INDEX idx_orders_date        ON orders (date);
+CREATE INDEX idx_users_email        ON users  (email);
+CREATE INDEX idx_users_client       ON users  (client_id);
